@@ -74,6 +74,7 @@ def main():
         if 'content' not in st.session_state:
             st.session_state.content = extract_text_from_pdf(uploaded_file)
             st.session_state.images = extract_images_from_pdf(uploaded_file)
+            logger.info("PDF content extracted and stored in session state")
 
         chat_model = create_chat_model()
 
@@ -121,12 +122,21 @@ def main():
                 user_input = st.text_input("Your question:")
                 submit_button = st.button("Submit Question")
 
-                if submit_button and user_input:
-                    st.session_state.chat_history.append(HumanMessage(content=user_input))
-                    response = chat_model(st.session_state.chat_history + [HumanMessage(content=f"Article content: {st.session_state.content}")])
-                    ai_message = AIMessage(content=response.content)
-                    st.session_state.chat_history.append(ai_message)
-                    st.write(f"AI: {ai_message.content}")
+                if submit_button:
+                    if user_input:
+                        logger.info(f"Question submitted: {user_input}")
+                        st.session_state.chat_history.append(HumanMessage(content=user_input))
+                        try:
+                            response = chat_model(st.session_state.chat_history + [HumanMessage(content=f"Article content: {st.session_state.content}")])
+                            logger.info("Response generated successfully")
+                            ai_message = AIMessage(content=response.content)
+                            st.session_state.chat_history.append(ai_message)
+                            st.write(f"AI: {ai_message.content}")
+                        except Exception as e:
+                            logger.error(f"Error generating response: {str(e)}")
+                            st.error(f"An error occurred while generating the response: {str(e)}")
+                    else:
+                        st.warning("Please enter a question before submitting.")
 
             elif figure_analysis:
                 st.write("Analyzing figures...")
