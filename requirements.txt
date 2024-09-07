@@ -6,3 +6,4 @@ langchain-community
 PyPDF2
 PyMuPDF
 python-dotenv
+pypdf
