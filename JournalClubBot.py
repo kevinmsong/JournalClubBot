@@ -1,13 +1,16 @@
 import streamlit as st
 import logging
 from openai import OpenAI
-from langchain_openai import ChatOpenAI
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain.chains import RetrievalQA
 import PyPDF2
 import fitz  # PyMuPDF
 import io
-import base64
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
