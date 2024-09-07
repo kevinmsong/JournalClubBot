@@ -84,7 +84,7 @@ def handle_file_upload(uploaded_file):
 
 def main():
     st.set_page_config(layout="wide")  # Set the page layout to wide
-    st.title("Journal Club Scientific Article Analysis App")
+    st.title("Journal Club Helper")
 
     if 'full_text' not in st.session_state:
         st.session_state.full_text = None
