@@ -16,12 +16,15 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
+# Initialize OpenAI API key
 api_key = st.secrets["openai_api_key"]
+os.environ["OPENAI_API_KEY"] = api_key
+
+# Initialize OpenAI client
 client = OpenAI(api_key=api_key)
 
 def create_chat_model():
-    return ChatOpenAI(temperature=0.1, openai_api_key=api_key, model="gpt-4o")
+    return ChatOpenAI(temperature=0.1, model="gpt-3.5-turbo")
 
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
