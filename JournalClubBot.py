@@ -63,13 +63,17 @@ def analyze_figures(content, images, chat_model):
     return image_analysis, images
 
 def main():
-    st.title("Journal Club Scientific Article Analysis App")
+    st.title("Scientific Article Analysis App")
+
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = [SystemMessage(content="You are an AI assistant answering questions about a scientific article.")]
 
     uploaded_file = st.file_uploader("Upload your scientific article (PDF)", type="pdf")
 
     if uploaded_file is not None:
-        content = extract_text_from_pdf(uploaded_file)
-        images = extract_images_from_pdf(uploaded_file)
+        if 'content' not in st.session_state:
+            st.session_state.content = extract_text_from_pdf(uploaded_file)
+            st.session_state.images = extract_images_from_pdf(uploaded_file)
 
         chat_model = create_chat_model()
 
@@ -98,49 +102,47 @@ def main():
         with output_container:
             if background_context:
                 st.write("Generating background context...")
-                result = generate_background_context(content, chat_model)
+                result = generate_background_context(st.session_state.content, chat_model)
                 st.markdown(result)
 
             elif paper_summary:
                 st.write("Generating paper summary...")
-                result = generate_paper_summary(content, chat_model)
+                result = generate_paper_summary(st.session_state.content, chat_model)
                 st.write(result)
 
             elif question_answering:
                 st.write("Question Answering Mode Activated")
-                if 'qa_activated' not in st.session_state:
-                    st.session_state.qa_activated = True
-                    st.session_state.chat_history = [SystemMessage(content="You are an AI assistant answering questions about a scientific article.")]
-                    st.session_state.chat_history.append(AIMessage(content="Hello! I'm here to answer questions about the uploaded scientific article. What would you like to know?"))
-
+                
+                # Display chat history
                 for message in st.session_state.chat_history[1:]:  # Skip the system message
                     st.write(f"{'You' if isinstance(message, HumanMessage) else 'AI'}: {message.content}")
 
+                # Get user input
                 user_input = st.text_input("Your question:")
                 submit_button = st.button("Submit Question")
 
                 if submit_button and user_input:
                     st.session_state.chat_history.append(HumanMessage(content=user_input))
-                    response = chat_model(st.session_state.chat_history + [HumanMessage(content=f"Article content: {content}")])
-                    st.session_state.chat_history.append(AIMessage(content=response.content))
-                    st.write(f"AI: {response.content}")
-                    st.experimental_rerun()  # Rerun to update the chat history display
+                    response = chat_model(st.session_state.chat_history + [HumanMessage(content=f"Article content: {st.session_state.content}")])
+                    ai_message = AIMessage(content=response.content)
+                    st.session_state.chat_history.append(ai_message)
+                    st.write(f"AI: {ai_message.content}")
 
             elif figure_analysis:
                 st.write("Analyzing figures...")
-                result, figures = analyze_figures(content, images, chat_model)
+                result, figures = analyze_figures(st.session_state.content, st.session_state.images, chat_model)
                 st.write(result)
                 for i, img in enumerate(figures):
                     st.image(img, caption=f"Figure {i+1}", use_column_width=True)
 
             elif critical_review:
                 st.write("Generating critical review...")
-                result = generate_critical_review(content, chat_model)
+                result = generate_critical_review(st.session_state.content, chat_model)
                 st.write(result)
 
             elif discussion_questions:
                 st.write("Generating discussion questions...")
-                result = generate_discussion_questions(content, chat_model)
+                result = generate_discussion_questions(st.session_state.content, chat_model)
                 st.write(result)
 
 if __name__ == "__main__":
