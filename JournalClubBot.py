@@ -131,8 +131,6 @@ def main():
                 with st.spinner("Analyzing figures..."):
                     result, figures = analyze_figures(st.session_state.full_text, extract_images_from_pdf(uploaded_file), create_chat_model())
                     st.write(result)
-                    for i, img in enumerate(figures):
-                        st.image(img, caption=f"Figure {i+1}", use_column_width=True)
 
             elif critical_review:
                 with st.spinner("Generating critical review..."):
