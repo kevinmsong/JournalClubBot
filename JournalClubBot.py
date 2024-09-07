@@ -63,7 +63,7 @@ def analyze_figures(content, images, chat_model):
     return image_analysis, images
 
 def main():
-    st.title("Scientific Article Analysis App")
+    st.title("Journal Club Scientific Article Analysis App")
 
     uploaded_file = st.file_uploader("Upload your scientific article (PDF)", type="pdf")
 
