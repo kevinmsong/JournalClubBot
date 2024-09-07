@@ -63,96 +63,109 @@ def analyze_figures(content, images, chat_model):
     image_analysis = process_feature(content, "provide an interpretation of the key data points and trends in the figures, graphs, and tables mentioned in the paper.", chat_model)
     return image_analysis, images
 
+def handle_file_upload(uploaded_file):
+    try:
+        with open("temp.pdf", "wb") as f:
+            f.write(uploaded_file.getvalue())
+        
+        loader = PyPDFLoader("temp.pdf")
+        pages = loader.load_and_split()
+
+        full_text = "\n".join([page.page_content for page in pages])
+
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        texts = text_splitter.split_text(full_text)
+
+        embeddings = OpenAIEmbeddings()
+        db = FAISS.from_texts(texts, embeddings)
+
+        qa_chain = RetrievalQA.from_chain_type(
+            llm=create_chat_model(),
+            chain_type="stuff",
+            retriever=db.as_retriever(search_kwargs={"k": 3}),
+            return_source_documents=True,
+        )
+
+        summary_prompt = f"Please provide a brief summary of the following text, which is the content of the uploaded PDF titled '{uploaded_file.name}':\n\n{full_text[:2000]}"
+        summary = create_chat_model().predict(summary_prompt)
+
+        return qa_chain, summary, full_text
+
+    except Exception as e:
+        logger.error(f"Error processing PDF: {str(e)}")
+        return None, f"An error occurred while processing the PDF: {str(e)}", None
+
 def main():
     st.title("Scientific Article Analysis App")
 
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = [SystemMessage(content="You are an AI assistant answering questions about a scientific article.")]
+    if 'qa_chain' not in st.session_state:
+        st.session_state.qa_chain = None
+    if 'full_text' not in st.session_state:
+        st.session_state.full_text = None
 
     uploaded_file = st.file_uploader("Upload your scientific article (PDF)", type="pdf")
 
     if uploaded_file is not None:
-        if 'content' not in st.session_state:
-            st.session_state.content = extract_text_from_pdf(uploaded_file)
-            st.session_state.images = extract_images_from_pdf(uploaded_file)
-            logger.info("PDF content extracted and stored in session state")
+        with st.spinner("Processing PDF..."):
+            qa_chain, summary, full_text = handle_file_upload(uploaded_file)
+            if qa_chain:
+                st.session_state.qa_chain = qa_chain
+                st.session_state.full_text = full_text
+                st.success("PDF processed successfully!")
+                st.subheader("Summary")
+                st.write(summary)
+            else:
+                st.error(summary)  # Display error message
 
-        chat_model = create_chat_model()
-
+    if st.session_state.qa_chain and st.session_state.full_text:
         st.write("Select a feature to analyze the paper:")
 
-        # Create two rows of buttons
         col1, col2, col3 = st.columns(3)
         col4, col5, col6 = st.columns(3)
 
         with col1:
-            background_context = st.button("Background Context")
+            if st.button("Background Context"):
+                with st.spinner("Generating background context..."):
+                    result = generate_background_context(st.session_state.full_text, create_chat_model())
+                    st.markdown(result)
+
         with col2:
-            paper_summary = st.button("Paper Summary")
+            if st.button("Paper Summary"):
+                with st.spinner("Generating paper summary..."):
+                    result = generate_paper_summary(st.session_state.full_text, create_chat_model())
+                    st.write(result)
+
         with col3:
-            question_answering = st.button("Question Answering")
-        with col4:
-            figure_analysis = st.button("Figure Analysis")
-        with col5:
-            critical_review = st.button("Critical Review")
-        with col6:
-            discussion_questions = st.button("Discussion Questions")
-
-        # Create a container for the output
-        output_container = st.container()
-
-        with output_container:
-            if background_context:
-                st.write("Generating background context...")
-                result = generate_background_context(st.session_state.content, chat_model)
-                st.markdown(result)
-
-            elif paper_summary:
-                st.write("Generating paper summary...")
-                result = generate_paper_summary(st.session_state.content, chat_model)
-                st.write(result)
-
-            elif question_answering:
+            if st.button("Question Answering"):
                 st.write("Question Answering Mode Activated")
-                
-                # Display chat history
-                for message in st.session_state.chat_history[1:]:  # Skip the system message
-                    st.write(f"{'You' if isinstance(message, HumanMessage) else 'AI'}: {message.content}")
-
-                # Get user input
                 user_input = st.text_input("Your question:")
-                submit_button = st.button("Submit Question")
+                if st.button("Submit Question"):
+                    if user_input:
+                        with st.spinner("Generating answer..."):
+                            response = st.session_state.qa_chain({"query": user_input})
+                            st.write("Answer:", response['result'])
 
-                if submit_button and user_input:
-                    logger.info(f"Question submitted: {user_input}")
-                    st.session_state.chat_history.append(HumanMessage(content=user_input))
-                    try:
-                        messages = st.session_state.chat_history + [HumanMessage(content=f"Article content: {st.session_state.content[:4000]}")]  # Limit content length
-                        response = chat_model(messages)
-                        logger.info("Response generated successfully")
-                        ai_message = AIMessage(content=response.content)
-                        st.session_state.chat_history.append(ai_message)
-                        st.write(f"AI: {ai_message.content}")
-                    except Exception as e:
-                        logger.error(f"Error generating response: {str(e)}")
-                        st.error(f"An error occurred while generating the response: {str(e)}")
+        with col4:
+            if st.button("Figure Analysis"):
+                with st.spinner("Analyzing figures..."):
+                    result, figures = analyze_figures(st.session_state.full_text, extract_images_from_pdf(uploaded_file), create_chat_model())
+                    st.write(result)
+                    for i, img in enumerate(figures):
+                        st.image(img, caption=f"Figure {i+1}", use_column_width=True)
 
-            elif figure_analysis:
-                st.write("Analyzing figures...")
-                result, figures = analyze_figures(st.session_state.content, st.session_state.images, chat_model)
-                st.write(result)
-                for i, img in enumerate(figures):
-                    st.image(img, caption=f"Figure {i+1}", use_column_width=True)
+        with col5:
+            if st.button("Critical Review"):
+                with st.spinner("Generating critical review..."):
+                    result = generate_critical_review(st.session_state.full_text, create_chat_model())
+                    st.write(result)
 
-            elif critical_review:
-                st.write("Generating critical review...")
-                result = generate_critical_review(st.session_state.content, chat_model)
-                st.write(result)
-
-            elif discussion_questions:
-                st.write("Generating discussion questions...")
-                result = generate_discussion_questions(st.session_state.content, chat_model)
-                st.write(result)
+        with col6:
+            if st.button("Discussion Questions"):
+                with st.spinner("Generating discussion questions..."):
+                    result = generate_discussion_questions(st.session_state.full_text, create_chat_model())
+                    st.write(result)
 
 if __name__ == "__main__":
     main()
