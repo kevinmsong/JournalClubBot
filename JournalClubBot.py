@@ -63,7 +63,7 @@ def analyze_figures(content, images, chat_model):
     return image_analysis, images
 
 def main():
-    st.title("Journal Club Scientific Article Analysis App")
+    st.title("Scientific Article Analysis App")
 
     uploaded_file = st.file_uploader("Upload your scientific article (PDF)", type="pdf")
 
@@ -75,21 +75,38 @@ def main():
 
         st.write("Select a feature to analyze the paper:")
 
+        # Create two rows of buttons
         col1, col2, col3 = st.columns(3)
+        col4, col5, col6 = st.columns(3)
 
         with col1:
-            if st.button("Background Context"):
+            background_context = st.button("Background Context")
+        with col2:
+            paper_summary = st.button("Paper Summary")
+        with col3:
+            question_answering = st.button("Question Answering")
+        with col4:
+            figure_analysis = st.button("Figure Analysis")
+        with col5:
+            critical_review = st.button("Critical Review")
+        with col6:
+            discussion_questions = st.button("Discussion Questions")
+
+        # Create a container for the output
+        output_container = st.container()
+
+        with output_container:
+            if background_context:
                 st.write("Generating background context...")
                 result = generate_background_context(content, chat_model)
                 st.markdown(result)
 
-            if st.button("Paper Summary"):
+            elif paper_summary:
                 st.write("Generating paper summary...")
                 result = generate_paper_summary(content, chat_model)
                 st.write(result)
 
-        with col2:
-            if st.button("Question Answering"):
+            elif question_answering:
                 st.write("Initializing question answering...")
                 st.session_state.chat_history = st.session_state.get('chat_history', [SystemMessage(content="You are an AI assistant answering questions about a scientific article.")])
                 st.session_state.chat_history.append(AIMessage(content="Hello! I'm here to answer questions about the uploaded scientific article. What would you like to know?"))
@@ -104,20 +121,19 @@ def main():
                     st.session_state.chat_history.append(AIMessage(content=response.content))
                     st.write(f"AI: {response.content}")
 
-            if st.button("Figure Analysis"):
+            elif figure_analysis:
                 st.write("Analyzing figures...")
                 result, figures = analyze_figures(content, images, chat_model)
                 st.write(result)
                 for i, img in enumerate(figures):
-                    st.image(img, caption=f"Figure {i+1}")
+                    st.image(img, caption=f"Figure {i+1}", use_column_width=True)
 
-        with col3:
-            if st.button("Critical Review"):
+            elif critical_review:
                 st.write("Generating critical review...")
                 result = generate_critical_review(content, chat_model)
                 st.write(result)
 
-            if st.button("Discussion Questions"):
+            elif discussion_questions:
                 st.write("Generating discussion questions...")
                 result = generate_discussion_questions(content, chat_model)
                 st.write(result)
