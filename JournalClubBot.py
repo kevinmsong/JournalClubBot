@@ -24,7 +24,7 @@ os.environ["OPENAI_API_KEY"] = api_key
 client = OpenAI(api_key=api_key)
 
 def create_chat_model():
-    return ChatOpenAI(temperature=0.1, model="gpt-3.5-turbo")
+    return ChatOpenAI(temperature=0.1, model="gpt-4o")
 
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
@@ -54,19 +54,16 @@ def process_feature(content, feature, chat_model):
     return response.content
 
 def generate_background_context(content, chat_model):
-    return process_feature(content, "provide a brief review of the background and previous research related to the paper, including clickable references. Also provide definitions for technical terms or jargon used in the paper.", chat_model)
-
-def generate_paper_summary(content, chat_model):
-    return process_feature(content, "provide a concise summary of the paper, highlighting the main objectives, methods, results, and conclusions.", chat_model)
+    return process_feature(content, "provide a brief review of the background and previous research related to the paper, including clickable references for a technical postdoctoral scientific/engineering audience. Also provide definitions for technical terms or jargon used in the paper.", chat_model)
 
 def generate_critical_review(content, chat_model):
-    return process_feature(content, "provide a critical review of the paper, pointing out potential weaknesses in experimental design, data interpretation, or statistical analysis.", chat_model)
+    return process_feature(content, "provide a critical review of the paper for a technical postdoctoral scientific/engineering audience, pointing out potential weaknesses in experimental design, data interpretation, or statistical analysis. You are allowed be overly harsh.", chat_model)
 
 def generate_discussion_questions(content, chat_model):
-    return process_feature(content, "generate 20 thought-provoking questions based on the content of the paper, encouraging deeper analysis of methodology, results, and implications.", chat_model)
+    return process_feature(content, "generate 20 thought-provoking questions based on the content of the paper for a technical postdoctoral scientific/engineering audience, encouraging deeper analysis of methodology, results, and implications.", chat_model)
 
 def analyze_figures(content, images, chat_model):
-    image_analysis = process_feature(content, "provide an interpretation of the key data points and trends in the figures, graphs, and tables mentioned in the paper.", chat_model)
+    image_analysis = process_feature(content, "provide an interpretation of the key data points and trends in the figures, graphs, and tables mentioned in the paper for a technical postdoctoral scientific/engineering audience.", chat_model)
     return image_analysis, images
 
 def handle_file_upload(uploaded_file):
@@ -79,36 +76,16 @@ def handle_file_upload(uploaded_file):
 
         full_text = "\n".join([page.page_content for page in pages])
 
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        texts = text_splitter.split_text(full_text)
-
-        embeddings = OpenAIEmbeddings()
-        db = FAISS.from_texts(texts, embeddings)
-
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=create_chat_model(),
-            chain_type="stuff",
-            retriever=db.as_retriever(search_kwargs={"k": 3}),
-            return_source_documents=True,
-        )
-
-        summary_prompt = f"Please provide a brief summary of the following text, which is the content of the uploaded PDF titled '{uploaded_file.name}':\n\n{full_text[:2000]}"
-        summary = create_chat_model().predict(summary_prompt)
-
-        return qa_chain, summary, full_text
+        return full_text
 
     except Exception as e:
         logger.error(f"Error processing PDF: {str(e)}")
-        return None, f"An error occurred while processing the PDF: {str(e)}", None
+        return None
 
 def main():
     st.set_page_config(layout="wide")  # Set the page layout to wide
-    st.title("Scientific Article Analysis App")
+    st.title("Journal Club Scientific Article Analysis App")
 
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = [SystemMessage(content="You are an AI assistant answering questions about a scientific article.")]
-    if 'qa_chain' not in st.session_state:
-        st.session_state.qa_chain = None
     if 'full_text' not in st.session_state:
         st.session_state.full_text = None
 
@@ -118,36 +95,27 @@ def main():
 
         if uploaded_file is not None:
             with st.spinner("Processing PDF..."):
-                qa_chain, summary, full_text = handle_file_upload(uploaded_file)
-                if qa_chain:
-                    st.session_state.qa_chain = qa_chain
+                full_text = handle_file_upload(uploaded_file)
+                if full_text:
                     st.session_state.full_text = full_text
                     st.success("PDF processed successfully!")
                 else:
-                    st.error(summary)  # Display error message
+                    st.error("An error occurred while processing the PDF.")
 
     # Main content area
-    if st.session_state.qa_chain and st.session_state.full_text:
-        st.subheader("PDF Summary")
-        st.write(summary)
-
+    if st.session_state.full_text:
         st.subheader("Analysis Features")
         st.write("Select a feature to analyze the paper:")
 
-        col1, col2, col3 = st.columns(3)
-        col4, col5, col6 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
 
         with col1:
             background_context = st.button("Background Context")
         with col2:
-            paper_summary = st.button("Paper Summary")
-        with col3:
-            question_answering = st.button("Question Answering")
-        with col4:
             figure_analysis = st.button("Figure Analysis")
-        with col5:
+        with col3:
             critical_review = st.button("Critical Review")
-        with col6:
+        with col4:
             discussion_questions = st.button("Discussion Questions")
 
         # Create a wide container for output
@@ -158,20 +126,6 @@ def main():
                 with st.spinner("Generating background context..."):
                     result = generate_background_context(st.session_state.full_text, create_chat_model())
                     st.markdown(result)
-
-            elif paper_summary:
-                with st.spinner("Generating paper summary..."):
-                    result = generate_paper_summary(st.session_state.full_text, create_chat_model())
-                    st.write(result)
-
-            elif question_answering:
-                st.write("Question Answering Mode Activated")
-                user_input = st.text_input("Your question:")
-                if st.button("Submit Question"):
-                    if user_input:
-                        with st.spinner("Generating answer..."):
-                            response = st.session_state.qa_chain({"query": user_input})
-                            st.write("Answer:", response['result'])
 
             elif figure_analysis:
                 with st.spinner("Analyzing figures..."):
