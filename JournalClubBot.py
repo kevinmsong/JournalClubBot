@@ -117,15 +117,14 @@ def main():
                     st.write(f"{'You' if isinstance(message, HumanMessage) else 'AI'}: {message.content}")
 
                 user_input = st.text_input("Your question:")
-                if user_input:
+                submit_button = st.button("Submit Question")
+
+                if submit_button and user_input:
                     st.session_state.chat_history.append(HumanMessage(content=user_input))
                     response = chat_model(st.session_state.chat_history + [HumanMessage(content=f"Article content: {content}")])
                     st.session_state.chat_history.append(AIMessage(content=response.content))
                     st.write(f"AI: {response.content}")
-
-                if st.button("Reset Q&A"):
-                    del st.session_state.qa_activated
-                    st.experimental_rerun()
+                    st.experimental_rerun()  # Rerun to update the chat history display
 
             elif figure_analysis:
                 st.write("Analyzing figures...")
