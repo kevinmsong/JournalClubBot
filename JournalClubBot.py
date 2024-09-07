@@ -102,6 +102,7 @@ def handle_file_upload(uploaded_file):
         return None, f"An error occurred while processing the PDF: {str(e)}", None
 
 def main():
+    st.set_page_config(layout="wide")  # Set the page layout to wide
     st.title("Scientific Article Analysis App")
 
     if 'chat_history' not in st.session_state:
@@ -111,40 +112,59 @@ def main():
     if 'full_text' not in st.session_state:
         st.session_state.full_text = None
 
-    uploaded_file = st.file_uploader("Upload your scientific article (PDF)", type="pdf")
+    # Sidebar for file upload
+    with st.sidebar:
+        uploaded_file = st.file_uploader("Upload your scientific article (PDF)", type="pdf")
 
-    if uploaded_file is not None:
-        with st.spinner("Processing PDF..."):
-            qa_chain, summary, full_text = handle_file_upload(uploaded_file)
-            if qa_chain:
-                st.session_state.qa_chain = qa_chain
-                st.session_state.full_text = full_text
-                st.success("PDF processed successfully!")
-                st.subheader("Summary")
-                st.write(summary)
-            else:
-                st.error(summary)  # Display error message
+        if uploaded_file is not None:
+            with st.spinner("Processing PDF..."):
+                qa_chain, summary, full_text = handle_file_upload(uploaded_file)
+                if qa_chain:
+                    st.session_state.qa_chain = qa_chain
+                    st.session_state.full_text = full_text
+                    st.success("PDF processed successfully!")
+                else:
+                    st.error(summary)  # Display error message
 
+    # Main content area
     if st.session_state.qa_chain and st.session_state.full_text:
+        st.subheader("PDF Summary")
+        st.write(summary)
+
+        st.subheader("Analysis Features")
         st.write("Select a feature to analyze the paper:")
 
         col1, col2, col3 = st.columns(3)
         col4, col5, col6 = st.columns(3)
 
         with col1:
-            if st.button("Background Context"):
+            background_context = st.button("Background Context")
+        with col2:
+            paper_summary = st.button("Paper Summary")
+        with col3:
+            question_answering = st.button("Question Answering")
+        with col4:
+            figure_analysis = st.button("Figure Analysis")
+        with col5:
+            critical_review = st.button("Critical Review")
+        with col6:
+            discussion_questions = st.button("Discussion Questions")
+
+        # Create a wide container for output
+        output_container = st.container()
+
+        with output_container:
+            if background_context:
                 with st.spinner("Generating background context..."):
                     result = generate_background_context(st.session_state.full_text, create_chat_model())
                     st.markdown(result)
 
-        with col2:
-            if st.button("Paper Summary"):
+            elif paper_summary:
                 with st.spinner("Generating paper summary..."):
                     result = generate_paper_summary(st.session_state.full_text, create_chat_model())
                     st.write(result)
 
-        with col3:
-            if st.button("Question Answering"):
+            elif question_answering:
                 st.write("Question Answering Mode Activated")
                 user_input = st.text_input("Your question:")
                 if st.button("Submit Question"):
@@ -153,22 +173,19 @@ def main():
                             response = st.session_state.qa_chain({"query": user_input})
                             st.write("Answer:", response['result'])
 
-        with col4:
-            if st.button("Figure Analysis"):
+            elif figure_analysis:
                 with st.spinner("Analyzing figures..."):
                     result, figures = analyze_figures(st.session_state.full_text, extract_images_from_pdf(uploaded_file), create_chat_model())
                     st.write(result)
                     for i, img in enumerate(figures):
                         st.image(img, caption=f"Figure {i+1}", use_column_width=True)
 
-        with col5:
-            if st.button("Critical Review"):
+            elif critical_review:
                 with st.spinner("Generating critical review..."):
                     result = generate_critical_review(st.session_state.full_text, create_chat_model())
                     st.write(result)
 
-        with col6:
-            if st.button("Discussion Questions"):
+            elif discussion_questions:
                 with st.spinner("Generating discussion questions..."):
                     result = generate_discussion_questions(st.session_state.full_text, create_chat_model())
                     st.write(result)
