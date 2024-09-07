@@ -7,3 +7,4 @@ PyPDF2
 PyMuPDF
 python-dotenv
 pypdf
+faiss-cpu
