@@ -107,9 +107,11 @@ def main():
                 st.write(result)
 
             elif question_answering:
-                st.write("Initializing question answering...")
-                st.session_state.chat_history = st.session_state.get('chat_history', [SystemMessage(content="You are an AI assistant answering questions about a scientific article.")])
-                st.session_state.chat_history.append(AIMessage(content="Hello! I'm here to answer questions about the uploaded scientific article. What would you like to know?"))
+                st.write("Question Answering Mode Activated")
+                if 'qa_activated' not in st.session_state:
+                    st.session_state.qa_activated = True
+                    st.session_state.chat_history = [SystemMessage(content="You are an AI assistant answering questions about a scientific article.")]
+                    st.session_state.chat_history.append(AIMessage(content="Hello! I'm here to answer questions about the uploaded scientific article. What would you like to know?"))
 
                 for message in st.session_state.chat_history[1:]:  # Skip the system message
                     st.write(f"{'You' if isinstance(message, HumanMessage) else 'AI'}: {message.content}")
@@ -120,6 +122,10 @@ def main():
                     response = chat_model(st.session_state.chat_history + [HumanMessage(content=f"Article content: {content}")])
                     st.session_state.chat_history.append(AIMessage(content=response.content))
                     st.write(f"AI: {response.content}")
+
+                if st.button("Reset Q&A"):
+                    del st.session_state.qa_activated
+                    st.experimental_rerun()
 
             elif figure_analysis:
                 st.write("Analyzing figures...")
