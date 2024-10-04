@@ -57,7 +57,7 @@ def generate_background_context(content, chat_model):
     return process_feature(content, "provide a brief review of the background and previous research related to the paper, including clickable references for a technical postdoctoral scientific/engineering audience. Also provide definitions for technical terms or jargon used in the paper.", chat_model)
 
 def generate_critical_review(content, chat_model):
-    return process_feature(content, "provide a critical review of the paper for a technical postdoctoral scientific/engineering audience, pointing out potential weaknesses in experimental design, data interpretation, or statistical analysis. You are allowed be overly harsh.", chat_model)
+    return process_feature(content, "provide a critical review of the paper for a technical postdoctoral scientific/engineering audience, pointing out strengths and weaknesses, as well as review of experimental design, data interpretation, and/or statistical analysis. You are allowed be overly harsh.", chat_model)
 
 def generate_discussion_questions(content, chat_model):
     return process_feature(content, "generate 20 thought-provoking questions based on the content of the paper for a technical postdoctoral scientific/engineering audience, encouraging deeper analysis of methodology, results, and implications.", chat_model)
